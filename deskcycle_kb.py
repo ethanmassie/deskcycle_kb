@@ -29,10 +29,10 @@ def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
                 # check for keyboard inputs to perform
                 for key_speed_range in key_speed_ranges:
                     if key_speed_range.min_speed <= speed <= key_speed_range.max_speed:
-                        if key_speed_range.hold_key:
+                        if key_speed_range.hold_key and not key_speed_range.down:
                             keyDown(key_speed_range.key_name)
                             key_speed_range.down = True
-                        else:
+                        elif not key_speed_range.hold_key:
                             typewrite(key_speed_range.key_name)
                     elif key_speed_range.down:
                         keyUp(key_speed_range.key_name)
