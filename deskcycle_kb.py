@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from dataclasses import dataclass
 from typing import List
 
@@ -41,15 +42,19 @@ def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
                 # there will likely be a few empty strings returned at first causing a ValueError
                 pass
             except KeyboardInterrupt as e:
-                # safely exit on KeyboardInterrupt
-                exit(0)
+                # break out of main loop to complete
+                break
+
+        # clean up held down keys when loop breaks
+        for key_speed_range in key_speed_ranges:
+            if key_speed_range.down:
+                keyUp(key_speed_range.key_name)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Use speed of DeskCycle Speedo to create keyboard inputs')
-    parser.add_argument('--file', '-f', dest='keyboard_config', type=str,
-                        help='Path to json file with input configuration',
-                        default="example_config.json")
+    parser.add_argument('--file', '-f', dest='keyboard_config', type=str, required=True,
+                        help='Path to json file with input configuration')
     parser.add_argument('--device', '-d', dest="device", type=str, help="Path to DeskCycle Speedo device file",
                         default='/dev/ttyACM0')
     args = parser.parse_args()

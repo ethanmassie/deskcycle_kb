@@ -7,7 +7,7 @@
       "hold_key": true
     },
     {
-      "key": "He's going for speeeeed\n",
+      "key_name": "He's going for speeeeed\n",
       "min_speed": 30.0,
       "max_speed": 50.0,
       "hold_key": false
