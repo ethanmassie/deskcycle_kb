@@ -1,5 +1,4 @@
 #!/usr/bin/python
-from dataclasses import dataclass
 from typing import List
 
 from serial import Serial
@@ -12,15 +11,16 @@ TOGGLE_KEY = 'TOGGLE_KEY'
 HOLD_KEY = 'HOLD_KEY'
 
 
-@dataclass()
 class KeySpeedRange:
-    key_name: str
-    min_speed: float
-    max_speed: float = float('inf')
-    key_type: str = 'HOLD_KEY'
-    # track if the key is being held down so we can do a key up when out of range
-    down: bool = False
-    toggled: bool = False
+    def __init__(self, key_name: str, min_speed: float, max_speed=float('inf'), key_type='HOLD_KEY'):
+        if key_type != TYPEWRITE_KEY and not isValidKey(key_name):
+            raise ValueError('Invalid Key {} for key type {}'.format(key_name, key_type))
+        self.key_name = key_name
+        self.min_speed = min_speed
+        self.max_speed = max_speed
+        self.key_type = key_type
+        self.down = False
+        self.toggled = False
 
 
 def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
@@ -83,10 +83,10 @@ if __name__ == '__main__':
     configured_keys = []
     key: dict
     for key in keyboard_config['keys']:
-        configured_keys.append(conf_key := KeySpeedRange(*key.values()))
-        # Validate non Typewrite keys
-        if not isValidKey(conf_key.key_name) and not conf_key.key_type == TYPEWRITE_KEY:
-            print('Invalid Key: {}', conf_key.key_name)
+        try:
+            configured_keys.append(conf_key := KeySpeedRange(*key.values()))
+        except ValueError as e:
+            print(e)
             exit(1)
 
     main(configured_keys, args.device)
