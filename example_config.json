@@ -4,13 +4,13 @@
       "key_name": "shift",
       "min_speed": 15.0,
       "max_speed": 50.0,
-      "hold_key": true
+      "key_type": "HOLD_KEY"
     },
     {
       "key_name": "He's going for speeeeed\n",
       "min_speed": 30.0,
       "max_speed": 50.0,
-      "hold_key": false
+      "key_type": "TYPEWRITE_KEY"
     }
   ]
 }

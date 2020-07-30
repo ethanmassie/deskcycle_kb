@@ -3,9 +3,13 @@ from dataclasses import dataclass
 from typing import List
 
 from serial import Serial
-from pyautogui import keyDown, keyUp, typewrite
+from pyautogui import keyDown, keyUp, typewrite, press, isValidKey
 import argparse
 import json
+
+TYPEWRITE_KEY = 'TYPEWRITE_KEY'
+TOGGLE_KEY = 'TOGGLE_KEY'
+HOLD_KEY = 'HOLD_KEY'
 
 
 @dataclass()
@@ -13,13 +17,15 @@ class KeySpeedRange:
     key_name: str
     min_speed: float
     max_speed: float = float('inf')
-    hold_key: bool = True
+    key_type: str = 'HOLD_KEY'
     # track if the key is being held down so we can do a key up when out of range
     down: bool = False
+    toggled: bool = False
 
 
 def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
     with Serial(dev_name, 9600, timeout=1) as cycle:
+        # wait a few seconds to start the main loop
         while True:
             # request speed
             cycle.write(b's')
@@ -29,19 +35,31 @@ def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
                 speed = float(cycle.readline().decode())
                 # check for keyboard inputs to perform
                 for key_speed_range in key_speed_ranges:
+                    # Check if in range
                     if key_speed_range.min_speed <= speed <= key_speed_range.max_speed:
-                        if key_speed_range.hold_key and not key_speed_range.down:
+
+                        if key_speed_range.key_type == HOLD_KEY and not key_speed_range.down:
                             keyDown(key_speed_range.key_name)
                             key_speed_range.down = True
-                        elif not key_speed_range.hold_key:
+                        elif key_speed_range.key_type == TOGGLE_KEY and not key_speed_range.toggled:
+                            press(key_speed_range.key_name)
+                            key_speed_range.toggled = True
+                        elif key_speed_range.key_type == TYPEWRITE_KEY:
                             typewrite(key_speed_range.key_name)
+                    # Out of range, if held down then do a keyUp
                     elif key_speed_range.down:
+                        if key_speed_range.key_type == TOGGLE_KEY:
+                            keyDown(key_speed_range.key_name)
                         keyUp(key_speed_range.key_name)
                         key_speed_range.down = False
-            except ValueError as e:
+                    # if toggled press the key again and un-toggle
+                    elif key_speed_range.toggled:
+                        press(key_speed_range.key_name)
+                        key_speed_range.toggled = False
+            except ValueError:
                 # there will likely be a few empty strings returned at first causing a ValueError
                 pass
-            except KeyboardInterrupt as e:
+            except KeyboardInterrupt:
                 # break out of main loop to complete
                 break
 
@@ -66,5 +84,9 @@ if __name__ == '__main__':
     key: dict
     for key in keyboard_config['keys']:
         configured_keys.append(conf_key := KeySpeedRange(*key.values()))
+        # Validate non Typewrite keys
+        if not isValidKey(conf_key.key_name) and not conf_key.key_type == TYPEWRITE_KEY:
+            print('Invalid Key: {}', conf_key.key_name)
+            exit(1)
 
     main(configured_keys, args.device)
