@@ -14,7 +14,13 @@ Install dependencies
 
 `pip install -r requirements.txt`
 
-Try to see if everything works 
+(Linux Only) Install tkinter with your package manager
+
+`pacman -S tk`
+
+`apt install python3-tk`
+
+Run the example config to verify everything works.
 
 `./deskcycle_kb.py -f example_config.json`
 
