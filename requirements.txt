@@ -1,0 +1,5 @@
+pyserial~=3.4
+pyautogui~=0.9.50
+marshmallow~=3.7.1
+marshmallow_dataclass
+marshmallow_enum
