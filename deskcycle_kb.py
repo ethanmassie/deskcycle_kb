@@ -10,8 +10,10 @@ from serial import Serial
 from pyautogui import keyDown, keyUp, typewrite, press, isValidKey
 import argparse
 import json
+import serial.tools.list_ports
 
 CONF_PATH = '{}/.config/deskcycle_kb'.format(path.expanduser('~'))
+DEV_NAME = b'DeskCycle Speedo\r\n'
 
 
 class KeyType(Enum):
@@ -62,61 +64,74 @@ class ConfiguredKeys:
 ConfiguredKeysSchema = class_schema(ConfiguredKeys)
 
 
-def main(key_speed_ranges: List[KeySpeedRange], dev_name: str):
+def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: serial):
     """
     Main loop of program
         Parameters:
             key_speed_ranges List of type KeySpeedRange containing keys and range they should be pressed in
             dev_name str name of the DeskCycle Speedo device file
     """
-    with Serial(dev_name, 9600, timeout=1) as cycle:
-        try:
-            while True:
-                # request speed
-                cycle.write(b's')
-                try:
-                    # read the speed, decode the bytes, convert to float
-                    speed = float(cycle.readline().decode())
-                except ValueError:
-                    # there will likely be a few empty strings returned at first causing a ValueError
-                    continue
+    try:
+        while True:
+            # request speed
+            desk_cycle.write(b's')
+            try:
+                # read the speed, decode the bytes, convert to float
+                speed = float(desk_cycle.readline().decode())
+            except ValueError:
+                # there will likely be a few empty strings returned at first causing a ValueError
+                continue
 
-                # check for keyboard inputs to perform
-                for key_speed_range in key_speed_ranges:
-                    # Check if in range
-                    if key_speed_range.min_speed <= speed <= key_speed_range.max_speed:
-
-                        if key_speed_range.key_type == KeyType.HOLD_KEY and not key_speed_range.down:
-                            keyDown(key_speed_range.key_name)
-                            key_speed_range.down = True
-                        elif key_speed_range.key_type == KeyType.TOGGLE_KEY and not key_speed_range.toggled:
-                            press(key_speed_range.key_name)
-                            key_speed_range.toggled = True
-                        elif key_speed_range.key_type == KeyType.TYPEWRITE_KEY:
-                            typewrite(key_speed_range.key_name)
-                    # Out of range, if held down then do a keyUp
-                    elif key_speed_range.down:
-                        keyUp(key_speed_range.key_name)
-                        key_speed_range.down = False
-                    # if toggled press the key again and un-toggle
-                    elif key_speed_range.toggled:
-                        press(key_speed_range.key_name)
-                        key_speed_range.toggled = False
-
-        except KeyboardInterrupt:
-            # clean up held down keys when users interrupts program
+            # check for keyboard inputs to perform
             for key_speed_range in key_speed_ranges:
-                if key_speed_range.down:
+                # Check if in range
+                if key_speed_range.min_speed <= speed <= key_speed_range.max_speed:
+
+                    if key_speed_range.key_type == KeyType.HOLD_KEY and not key_speed_range.down:
+                        keyDown(key_speed_range.key_name)
+                        key_speed_range.down = True
+                    elif key_speed_range.key_type == KeyType.TOGGLE_KEY and not key_speed_range.toggled:
+                        press(key_speed_range.key_name)
+                        key_speed_range.toggled = True
+                    elif key_speed_range.key_type == KeyType.TYPEWRITE_KEY:
+                        typewrite(key_speed_range.key_name)
+                # Out of range, if held down then do a keyUp
+                elif key_speed_range.down:
                     keyUp(key_speed_range.key_name)
+                    key_speed_range.down = False
+                # if toggled press the key again and un-toggle
+                elif key_speed_range.toggled:
+                    press(key_speed_range.key_name)
+                    key_speed_range.toggled = False
+
+    except KeyboardInterrupt:
+        # clean up held down keys when users interrupts program
+        for key_speed_range in key_speed_ranges:
+            if key_speed_range.down:
+                keyUp(key_speed_range.key_name)
+
+
+def discover_device():
+    """
+    Find a DeskCycle Speedo device
+    :return: Open Serial device
+    """
+    for port in serial.tools.list_ports.comports():
+        device = Serial(port.device, 9600, timeout=1)
+        attempt = 0
+        while attempt < 3:
+            device.write(b'h')
+            handshake = device.readline()
+            if handshake == DEV_NAME:
+                return device
+            else:
+                attempt += 1
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Use speed of DeskCycle Speedo to create keyboard inputs')
     parser.add_argument('--file', '-f', dest='keyboard_config', type=str, required=True,
                         help='Path to json file with input configuration or name of file in ~/.config/deskcycle_kb')
-    parser.add_argument('--device', '-d', dest="device", type=str,
-                        help="Path to DeskCycle Speedo device file default=/dev/ttyACM0",
-                        default='/dev/ttyACM0')
     args = parser.parse_args()
 
     # find path to config file
@@ -138,4 +153,7 @@ if __name__ == '__main__':
             print(e)
             exit(2)
 
-    main(configured_keys.keys, args.device)
+    desk_cycle_dev = discover_device()
+
+    main(configured_keys.keys, desk_cycle_dev)
+    desk_cycle_dev.close()
