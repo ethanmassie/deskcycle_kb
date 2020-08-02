@@ -126,6 +126,8 @@ def discover_device():
                 return device
             else:
                 attempt += 1
+        device.close()
+    return None
 
 
 if __name__ == '__main__':
@@ -154,6 +156,10 @@ if __name__ == '__main__':
             exit(2)
 
     desk_cycle_dev = discover_device()
+
+    if desk_cycle_dev is None:
+        print("Failed to find DeskCycle Speedo device")
+        exit(3)
 
     main(configured_keys.keys, desk_cycle_dev)
     desk_cycle_dev.close()
