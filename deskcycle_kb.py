@@ -70,12 +70,11 @@ class ConfiguredKeys:
 ConfiguredKeysSchema = class_schema(ConfiguredKeys)
 
 
-def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: serial):
+def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
     """
     Main loop of program
-        Parameters:
-            key_speed_ranges List of type KeySpeedRange containing keys and range they should be pressed in
-            dev_name str name of the DeskCycle Speedo device file
+    key_speed_ranges List of type KeySpeedRange containing keys and range they should be pressed in
+    desk_cycle Serial device with an open desk cycle speedo
     """
     try:
         while True:

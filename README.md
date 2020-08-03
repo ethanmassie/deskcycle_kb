@@ -42,20 +42,6 @@ Config files must be written in JSON format. See example_config.json for a usabl
 }
 ```
 
-### Help
-```
-usage: deskcycle_kb [-h] --file KEYBOARD_CONFIG [--device DEVICE]
-
-Use speed of DeskCycle Speedo to create keyboard inputs
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --file KEYBOARD_CONFIG, -f KEYBOARD_CONFIG
-                        Path to json file with input configuration or name of file in ~/.config/deskcycle_kb
-  --device DEVICE, -d DEVICE
-                        Path to DeskCycle Speedo device file default=/dev/ttyACM0
-```
-
 Original DeskCycle Mod by Kneave 
 
 [Source Code](https://github.com/kneave/dcspeedo) 
