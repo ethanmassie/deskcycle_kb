@@ -2,7 +2,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List
-from os import path
 from pathlib import Path
 import platform
 
@@ -18,7 +17,7 @@ CONF_PATH = ''
 if platform.system() == 'Linux' or platform.system() == 'Darwin':
     CONF_PATH = '{}/.config/deskcycle_kb'.format(Path.home())
 elif platform.system() == 'Windows':
-    CONF_PATH = '{}/AppData/Local/deskcycle_kb'
+    CONF_PATH = '{}/AppData/Local/deskcycle_kb'.format(Path.home())
 
 DEV_NAME = b'DeskCycle Speedo\r\n'
 
@@ -146,9 +145,10 @@ if __name__ == '__main__':
     # find path to config file
     file_path = None
     conf_dir_file = '{}/{}'.format(CONF_PATH, args.keyboard_config)
-    if path.exists(args.keyboard_config):
+
+    if Path(args.keyboard_config).exists():
         file_path = args.keyboard_config
-    elif path.exists(conf_dir_file):
+    elif Path(conf_dir_file).exists():
         file_path = conf_dir_file
     else:
         print('Cannot find valid config file')
