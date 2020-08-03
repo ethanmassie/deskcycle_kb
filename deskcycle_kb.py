@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List
 from os import path
+from pathlib import Path
+import platform
 
 from marshmallow import ValidationError
 from marshmallow_dataclass import class_schema
@@ -12,7 +14,12 @@ import argparse
 import json
 import serial.tools.list_ports
 
-CONF_PATH = '{}/.config/deskcycle_kb'.format(path.expanduser('~'))
+CONF_PATH = ''
+if platform.system() == 'Linux' or platform.system() == 'Darwin':
+    CONF_PATH = '{}/.config/deskcycle_kb'.format(Path.home())
+elif platform.system() == 'Windows':
+    CONF_PATH = '{}/AppData/Local/deskcycle_kb'
+
 DEV_NAME = b'DeskCycle Speedo\r\n'
 
 
@@ -133,7 +140,7 @@ def discover_device():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Use speed of DeskCycle Speedo to create keyboard inputs')
     parser.add_argument('--file', '-f', dest='keyboard_config', type=str, required=True,
-                        help='Path to json file with input configuration or name of file in ~/.config/deskcycle_kb')
+                        help='Full path to json config or path relative to {}'.format(CONF_PATH))
     args = parser.parse_args()
 
     # find path to config file
