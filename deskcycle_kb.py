@@ -4,6 +4,7 @@ from enum import Enum
 from typing import List
 from pathlib import Path
 import platform
+import time
 
 from marshmallow import ValidationError
 from marshmallow_dataclass import class_schema
@@ -20,6 +21,7 @@ elif platform.system() == 'Windows':
     CONF_PATH = '{}/AppData/Local/deskcycle_kb'.format(Path.home())
 
 DEV_NAME = b'DeskCycle Speedo\r\n'
+SECONDS_IN_HOUR = 3600
 
 
 class KeyType(Enum):
@@ -76,8 +78,11 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
     key_speed_ranges List of type KeySpeedRange containing keys and range they should be pressed in
     desk_cycle Serial device with an open desk cycle speedo
     """
+    distance_traveled = 0.0
+    previous_time = time.time()
     try:
         while True:
+            now = time.time()
             # request speed
             desk_cycle.write(b's')
             try:
@@ -109,11 +114,17 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
                     press(key_speed_range.key_name)
                     key_speed_range.toggled = False
 
+            delta_time = now - previous_time
+            distance_traveled += (speed / SECONDS_IN_HOUR) * delta_time
+            previous_time = now
+
     except KeyboardInterrupt:
         # clean up held down keys when users interrupts program
         for key_speed_range in key_speed_ranges:
             if key_speed_range.down:
                 keyUp(key_speed_range.key_name)
+
+    print("\nYou biked {:.2f} miles".format(distance_traveled))
 
 
 def discover_device():
