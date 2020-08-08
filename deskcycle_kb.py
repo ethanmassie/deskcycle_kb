@@ -153,7 +153,7 @@ def discover_device():
             else:
                 attempt += 1
         device.close()
-    return None
+    raise RuntimeError('failed to find desk cycle device')
 
 
 if __name__ == '__main__':
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     elif Path(conf_dir_file).exists():
         file_path = conf_dir_file
     else:
-        logging.error('Cannot find valid config file')
+        logging.error('cannot find valid config file')
         exit(1)
 
     # deserialize configuration file
@@ -191,11 +191,12 @@ if __name__ == '__main__':
             logging.error(e)
             exit(2)
 
-    desk_cycle_dev = discover_device()
-
-    if desk_cycle_dev is None:
-        logging.error("Failed to find DeskCycle Speedo device")
+    try:
+        desk_cycle_dev = discover_device()
+    except RuntimeError as e:
+        logging.error(e)
         exit(3)
 
+    # noinspection PyUnboundLocalVariable
     main(configured_keys.keys, desk_cycle_dev)
     desk_cycle_dev.close()
