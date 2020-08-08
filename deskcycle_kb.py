@@ -79,6 +79,8 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
     key_speed_ranges List of type KeySpeedRange containing keys and range they should be pressed in
     desk_cycle Serial device with an open desk cycle speedo
     """
+    logging.debug('Starting main loop')
+    print('Press Ctr + C to stop')
     distance_traveled = 0.0
     previous_time = time.time()
     try:
@@ -140,12 +142,13 @@ def discover_device():
     :return: Open Serial device
     """
     for port in serial.tools.list_ports.comports():
-        device = Serial(port.device, 9600, timeout=1)
+        device = Serial(port.device, 9600, timeout=0.3)
         attempt = 0
         while attempt < 3:
             device.write(b'h')
             handshake = device.readline()
             if handshake == DEV_NAME:
+                logging.debug('Found desk cycle at {}'.format(port.device))
                 return device
             else:
                 attempt += 1
@@ -157,14 +160,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Use speed of DeskCycle Speedo to create keyboard inputs')
     parser.add_argument('--file', '-f', dest='keyboard_config', type=str, required=True,
                         help='Full path to json config or path relative to {}'.format(CONF_PATH))
-    parser.add_argument('--debug', '-d', dest='verbose', action='store_true',
+    parser.add_argument('--debug', '-d', dest='debug', action='store_true',
                         help='set if you want more logging info')
     args = parser.parse_args()
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    log_level = logging.ERROR
+    if args.debug:
+        log_level = logging.DEBUG
+
+    logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%I:%M:%S')
 
     # find path to config file
     file_path = None
@@ -175,7 +179,7 @@ if __name__ == '__main__':
     elif Path(conf_dir_file).exists():
         file_path = conf_dir_file
     else:
-        print('Cannot find valid config file')
+        logging.error('Cannot find valid config file')
         exit(1)
 
     # deserialize configuration file
@@ -183,13 +187,13 @@ if __name__ == '__main__':
         try:
             configured_keys = ConfiguredKeysSchema().load(json.load(keyboard_config_file))
         except ValidationError as e:
-            print(e)
+            logging.error(e)
             exit(2)
 
     desk_cycle_dev = discover_device()
 
     if desk_cycle_dev is None:
-        print("Failed to find DeskCycle Speedo device")
+        logging.error("Failed to find DeskCycle Speedo device")
         exit(3)
 
     main(configured_keys.keys, desk_cycle_dev)
