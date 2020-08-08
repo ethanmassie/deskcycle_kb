@@ -164,9 +164,10 @@ if __name__ == '__main__':
                         help='set if you want more logging info')
     args = parser.parse_args()
 
-    log_level = logging.ERROR
     if args.debug:
         log_level = logging.DEBUG
+    else:
+        log_level = logging.ERROR
 
     logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%I:%M:%S')
 
