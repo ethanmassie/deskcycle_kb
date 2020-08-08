@@ -5,6 +5,7 @@ from typing import List
 from pathlib import Path
 import platform
 import time
+import logging
 
 from marshmallow import ValidationError
 from marshmallow_dataclass import class_schema
@@ -82,7 +83,6 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
     previous_time = time.time()
     try:
         while True:
-            now = time.time()
             # request speed
             desk_cycle.write(b's')
             try:
@@ -92,6 +92,12 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
                 # there will likely be a few empty strings returned at first causing a ValueError
                 continue
 
+            # calculate distance traveled for this loop
+            now = time.time()
+            delta_time = now - previous_time
+            distance_traveled += (speed / SECONDS_IN_HOUR) * delta_time
+            previous_time = now
+
             # check for keyboard inputs to perform
             for key_speed_range in key_speed_ranges:
                 # Check if in range
@@ -100,23 +106,24 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
                     if key_speed_range.key_type == KeyType.HOLD_KEY and not key_speed_range.down:
                         keyDown(key_speed_range.key_name)
                         key_speed_range.down = True
+                        logging.debug("Holding {}".format(key_speed_range.key_name))
                     elif key_speed_range.key_type == KeyType.TOGGLE_KEY and not key_speed_range.toggled:
                         press(key_speed_range.key_name)
                         key_speed_range.toggled = True
+                        logging.debug("Pressed {}".format(key_speed_range.key_name))
                     elif key_speed_range.key_type == KeyType.TYPEWRITE_KEY:
                         typewrite(key_speed_range.key_name)
+                        logging.debug("Wrote {}".format(key_speed_range.key_name))
                 # Out of range, if held down then do a keyUp
                 elif key_speed_range.down:
                     keyUp(key_speed_range.key_name)
                     key_speed_range.down = False
+                    logging.debug("Released {}".format(key_speed_range.key_name))
                 # if toggled press the key again and un-toggle
                 elif key_speed_range.toggled:
                     press(key_speed_range.key_name)
                     key_speed_range.toggled = False
-
-            delta_time = now - previous_time
-            distance_traveled += (speed / SECONDS_IN_HOUR) * delta_time
-            previous_time = now
+                    logging.debug("Pressed {} Again".format(key_speed_range.key_name))
 
     except KeyboardInterrupt:
         # clean up held down keys when users interrupts program
@@ -150,7 +157,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Use speed of DeskCycle Speedo to create keyboard inputs')
     parser.add_argument('--file', '-f', dest='keyboard_config', type=str, required=True,
                         help='Full path to json config or path relative to {}'.format(CONF_PATH))
+    parser.add_argument('--debug', '-d', dest='verbose', action='store_true',
+                        help='set if you want more logging info')
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     # find path to config file
     file_path = None
