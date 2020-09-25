@@ -35,19 +35,18 @@ class KeyType(Enum):
 class KeySpeedRange:
     """
     An individual key speed range configuration
-        Attributes:
-            key_name: str
-                Valid name of key
-            min_speed: float
-                Minimum speed in range where key should be pressed
-            max_speed: float
-                Maximum speed in range where key should be pressed. Default Infinity
-            key_type: KeyType
-                Enum type of key determining behavior. Default HOLD_KEY
-            down: bool
-                State boolean set to True if a HOLD_KEY is being held down
-            toggled: bool
-                State boolean set to True if a TOGGLE_KEY has been pressed
+    key_name: str
+        Valid name of key
+    min_speed: float
+        Minimum speed in range where key should be pressed
+    max_speed: float
+        Maximum speed in range where key should be pressed. Default Infinity
+    key_type: KeyType
+        Enum type of key determining behavior. Default HOLD_KEY
+    down: bool
+        State boolean set to True if a HOLD_KEY is being held down
+    toggled: bool
+        State boolean set to True if a TOGGLE_KEY has been pressed
     """
     key_name: str
     min_speed: float
@@ -61,6 +60,33 @@ class KeySpeedRange:
             raise ValidationError('Invalid Key {} for key type {}'.format(self.key_name, self.key_type))
         self.down = False
         self.toggled = False
+
+    def is_in_range(self, speed: float) -> bool:
+        return self.min_speed <= speed <= self.max_speed
+
+    def activate(self):
+        if self.key_type == KeyType.HOLD_KEY and not self.down:
+            keyDown(self.key_name)
+            self.down = True
+            logging.debug("Holding {}".format(self.key_name))
+        elif self.key_type == KeyType.TOGGLE_KEY and not self.toggled:
+            press(self.key_name)
+            self.toggled = True
+            logging.debug("Pressed {}".format(self.key_name))
+        elif self.key_type == KeyType.TYPEWRITE_KEY:
+            typewrite(self.key_name)
+            logging.debug("Wrote {}".format(self.key_name))
+
+    def deactivate(self):
+        if self.down:
+            keyUp(self.key_name)
+            self.down = False
+            logging.debug("Released {}".format(self.key_name))
+            # if toggled press the key again and un-toggle
+        elif self.toggled:
+            press(self.key_name)
+            self.toggled = False
+            logging.debug("Pressed {} Again".format(self.key_name))
 
 
 @dataclass
@@ -103,35 +129,16 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
             # check for keyboard inputs to perform
             for key_speed_range in key_speed_ranges:
                 # Check if in range
-                if key_speed_range.min_speed <= speed <= key_speed_range.max_speed:
-
-                    if key_speed_range.key_type == KeyType.HOLD_KEY and not key_speed_range.down:
-                        keyDown(key_speed_range.key_name)
-                        key_speed_range.down = True
-                        logging.debug("Holding {}".format(key_speed_range.key_name))
-                    elif key_speed_range.key_type == KeyType.TOGGLE_KEY and not key_speed_range.toggled:
-                        press(key_speed_range.key_name)
-                        key_speed_range.toggled = True
-                        logging.debug("Pressed {}".format(key_speed_range.key_name))
-                    elif key_speed_range.key_type == KeyType.TYPEWRITE_KEY:
-                        typewrite(key_speed_range.key_name)
-                        logging.debug("Wrote {}".format(key_speed_range.key_name))
-                # Out of range, if held down then do a keyUp
-                elif key_speed_range.down:
-                    keyUp(key_speed_range.key_name)
-                    key_speed_range.down = False
-                    logging.debug("Released {}".format(key_speed_range.key_name))
-                # if toggled press the key again and un-toggle
-                elif key_speed_range.toggled:
-                    press(key_speed_range.key_name)
-                    key_speed_range.toggled = False
-                    logging.debug("Pressed {} Again".format(key_speed_range.key_name))
+                if key_speed_range.is_in_range(speed):
+                    key_speed_range.activate()
+                # Out of range so deactivate the key
+                else:
+                    key_speed_range.deactivate()
 
     except KeyboardInterrupt:
-        # clean up held down keys when users interrupts program
+        # ensure all keys are deactivated
         for key_speed_range in key_speed_ranges:
-            if key_speed_range.down:
-                keyUp(key_speed_range.key_name)
+            key_speed_range.deactivate()
 
     print("\nYou biked {:.2f} miles".format(distance_traveled))
 
@@ -193,10 +200,8 @@ if __name__ == '__main__':
 
     try:
         desk_cycle_dev = discover_device()
+        main(configured_keys.keys, desk_cycle_dev)
+        desk_cycle_dev.close()
     except RuntimeError as e:
         logging.error(e)
         exit(3)
-
-    # noinspection PyUnboundLocalVariable
-    main(configured_keys.keys, desk_cycle_dev)
-    desk_cycle_dev.close()
