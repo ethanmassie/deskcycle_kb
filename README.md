@@ -28,7 +28,7 @@ Unix Like: `./deskcycle_kb.py -f example_config.json`
 Windows: `python deskcycle_kb.py -f example_config.json`
 
 #### Write A Custom Config
-By default the script will look in `~/.config/deskcycle_kb/` or `%APPDATA%\deskcycle_kb\` for config files. 
+By default the script will look in `~/.config/deskcycle_kb/` or `%APPDATA%\Local\deskcycle_kb\` for config files. 
 You can also provide full paths to config files.
 
 Config files must be written in JSON format. See example_config.json for a usable example.
