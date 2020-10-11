@@ -7,28 +7,23 @@ Create keyboard inputs based on speed of DeskCycle. Requires Arduino mod for Des
 - pyautogui
 - marshmallow_dataclass
 - marshmallow_enum
-- tkinter (`pacman -S tk` or `apt install python3-tk`)
+- tkinter
 
 ### Getting Started
-Install dependencies
-
+Install dependencies  
 `pip install -r requirements.txt`
 
-(Linux Only) Install tkinter with your package manager
+(Linux Only) Install tkinter with your package manager  
+`pacman -S tk`  
+`apt install python3-tk`  
 
-`pacman -S tk`
-
-`apt install python3-tk`
-
-Run the example config to verify everything works.
-
-`./deskcycle_kb.py -f example_config.json`
+Run an example config to verify everything works.  
+`./deskcycle_kb.py -f example_configs/descenders.json`
 
 #### Write A Custom Config
-By default the script will look in `~/.config/deskcycle_kb/` for config files. 
-You can also provide full paths to config files.
-
-Config files must be written in JSON format. See example_config.json for a usable example.
+By default the script will look in `~/.config/deskcycle_kb/` for config files.   
+You can also provide full paths to config files.  
+Config files must be written in JSON format. See example_configs for usable examples.
 ```json
 {
     "keys": [
