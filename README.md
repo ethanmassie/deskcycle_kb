@@ -11,20 +11,6 @@ Create keyboard inputs based on speed of DeskCycle. Requires Arduino mod for Des
 
 ### Getting Started
 Install dependencies  
-`pip install -r requirements.txt`
-
-(Linux Only) Install tkinter with your package manager  
-`pacman -S tk`  
-`apt install python3-tk`  
-
-Run an example config to verify everything works.  
-`./deskcycle_kb.py -f example_configs/descenders.json`
-
-#### Write A Custom Config
-By default the script will look in `~/.config/deskcycle_kb/` for config files.   
-You can also provide full paths to config files.  
-Config files must be written in JSON format. See example_configs for usable examples.  
-
 `pip install -r requirements.txt`  
 
 (Linux Only) Install tkinter with your package manager  
@@ -37,14 +23,14 @@ Then logout and log back in and verify you are in the dialout group by running:
 `groups`
 
 Run the example config to verify everything works.  
-Unix Like: `./deskcycle_kb.py -f example_config.json`  
-Windows: `python deskcycle_kb.py -f example_config.json`
+Unix Like: `./deskcycle_kb.py -f example_configs/descenders.json`  
+Windows: `python deskcycle_kb.py -f example_configs\descenders.json`
 
 #### Write A Custom Config
 By default the script will look in `~/.config/deskcycle_kb/` or `%APPDATA%\Local\deskcycle_kb\` for config files. 
 You can also provide full paths to config files.
 
-Config files must be written in JSON format. See example_config.json for a usable example.
+Config files must be written in JSON format. See example_configs for usable examples.
 ```json
 {
     "keys": [
@@ -58,8 +44,6 @@ Config files must be written in JSON format. See example_config.json for a usabl
 }
 ```
 
-Original DeskCycle Mod by Kneave 
-
-[Source Code](https://github.com/kneave/dcspeedo) 
-
-[Blog Post](https://neave.engineering/2015/04/03/arduino-speedometer-for-the-deskcycle/)
+Original DeskCycle Mod by Kneave  
+[Source Code](https://github.com/kneave/dcspeedo)  
+[Blog Post](https://neave.engineering/2015/04/03/arduino-speedometer-for-the-deskcycle/)  
