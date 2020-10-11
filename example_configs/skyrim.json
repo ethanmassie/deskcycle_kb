@@ -1,0 +1,13 @@
+{
+  "keys": [
+    {
+      "key_name": "w",
+      "min_speed": 8.0
+    },
+    {
+      "key_name": "alt",
+      "min_speed": 15.0,
+      "key_type": "TOGGLE_KEY"
+    }
+  ]
+}
