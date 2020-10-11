@@ -26,6 +26,9 @@ SECONDS_IN_HOUR = 3600
 
 
 class KeyType(Enum):
+    """
+    Enumeration of possible key types
+    """
     HOLD_KEY = 'HOLD_KEY'
     TOGGLE_KEY = 'TOGGLE_KEY'
     TYPEWRITE_KEY = 'TYPEWRITE_KEY'
@@ -43,50 +46,103 @@ class KeySpeedRange:
         Maximum speed in range where key should be pressed. Default Infinity
     key_type: KeyType
         Enum type of key determining behavior. Default HOLD_KEY
-    down: bool
-        State boolean set to True if a HOLD_KEY is being held down
-    toggled: bool
-        State boolean set to True if a TOGGLE_KEY has been pressed
     """
     key_name: str
     min_speed: float
     max_speed: float = float('inf')
     key_type: KeyType = KeyType.HOLD_KEY
-    down: bool = False
-    toggled: bool = False
 
     def __post_init__(self):
+        # everything other than typewrite key requires a valid key
         if self.key_type != KeyType.TYPEWRITE_KEY and not isValidKey(self.key_name):
             raise ValidationError('Invalid Key {} for key type {}'.format(self.key_name, self.key_type))
-        self.down = False
-        self.toggled = False
+
+        # set the activate and deactivate functions based on type and set up the default state where necessary
+        if self.key_type == KeyType.HOLD_KEY:
+            self.__is_down = False
+            self.activate = self.__hold_key_activate
+            self.deactivate = self.__hold_key_deactivate
+        elif self.key_type == KeyType.TOGGLE_KEY:
+            self.__is_toggled = False
+            self.activate = self.__toggle_key_activate
+            self.deactivate = self.__toggle_key_deactivate
+        elif self.key_type == KeyType.TYPEWRITE_KEY:
+            self.activate = self.__typewrite_key_activate
+            self.deactivate = self.__typewrite_key_deactivate
+        else:
+            self.activate = self.__default_activate
+            self.deactivate = self.__default_deactivate
 
     def is_in_range(self, speed: float) -> bool:
+        """
+        Check if the given speed is within the min_speed and max_speed properties
+        :param speed: floating point speed to compare against
+        :return: boolean result of comparison
+        """
         return self.min_speed <= speed <= self.max_speed
 
-    def activate(self):
-        if self.key_type == KeyType.HOLD_KEY and not self.down:
+    def __hold_key_activate(self):
+        """
+        Handle activation for a hold key. Performs a key down on the key if it isn't already down
+        :return:
+        """
+        if not self.__is_down:
             keyDown(self.key_name)
-            self.down = True
+            self.__is_down = True
             logging.debug("Holding {}".format(self.key_name))
-        elif self.key_type == KeyType.TOGGLE_KEY and not self.toggled:
-            press(self.key_name)
-            self.toggled = True
-            logging.debug("Pressed {}".format(self.key_name))
-        elif self.key_type == KeyType.TYPEWRITE_KEY:
-            typewrite(self.key_name)
-            logging.debug("Wrote {}".format(self.key_name))
 
-    def deactivate(self):
-        if self.down:
-            keyUp(self.key_name)
-            self.down = False
-            logging.debug("Released {}".format(self.key_name))
-            # if toggled press the key again and un-toggle
-        elif self.toggled:
+    def __toggle_key_activate(self):
+        """
+        Handle activation for a toggle key. Only presses the key if it isn't already toggled
+        """
+        if not self.__is_toggled:
             press(self.key_name)
-            self.toggled = False
+            self.__is_toggled = True
+            logging.debug("Pressed {}".format(self.key_name))
+
+    def __typewrite_key_activate(self):
+        """
+        Handle activation for a typewrite key. Simply call typewrite with the key_name
+        :return:
+        """
+        typewrite(self.key_name)
+        logging.debug("Wrote {}".format(self.key_name))
+
+    def __default_activate(self):
+        """
+        perform activation for key based on it's type
+        """
+        pass
+
+    def __hold_key_deactivate(self):
+        """
+        Handle deactivation for a hold key. Performs a key up if the key is already down.
+        """
+        if self.__is_down:
+            keyUp(self.key_name)
+            self.__is_down = False
+            logging.debug("Released {}".format(self.key_name))
+
+    def __toggle_key_deactivate(self):
+        """
+        Handle deactivation for a toggle key. Only presses the key if it is already toggled effectively un-toggling it.
+        """
+        if self.__is_toggled:
+            press(self.key_name)
+            self.__is_toggled = False
             logging.debug("Pressed {} Again".format(self.key_name))
+
+    def __typewrite_key_deactivate(self):
+        """
+        Handle deactivation for typewrite key. Noop since nothing needs to be deactivated.
+        """
+        pass
+
+    def __default_deactivate(self):
+        """
+        perform deactivation for key based on it's type
+        """
+        pass
 
 
 @dataclass
@@ -97,6 +153,17 @@ class ConfiguredKeys:
 
 # Schema for deserializing json key configuration
 ConfiguredKeysSchema = class_schema(ConfiguredKeys)
+
+
+def calculate_delta_time(previous_time):
+    """
+    Get the delta time based on the previous_time argument and the current time
+    :param previous_time: Time to compare against now
+    :return: difference between previous_time and now, now
+    """
+    now = time.time()
+    delta_time = now - previous_time
+    return delta_time, now
 
 
 def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
@@ -113,25 +180,16 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
         while True:
             # request speed
             desk_cycle.write(b's')
-            try:
-                # read the speed, decode the bytes, convert to float
-                speed = float(desk_cycle.readline().decode())
-            except ValueError:
-                # there will likely be a few empty strings returned at first causing a ValueError
-                continue
+            speed = float(desk_cycle.readline().decode())
 
             # calculate distance traveled for this loop
-            now = time.time()
-            delta_time = now - previous_time
+            delta_time, previous_time = calculate_delta_time(previous_time)
             distance_traveled += (speed / SECONDS_IN_HOUR) * delta_time
-            previous_time = now
 
             # check for keyboard inputs to perform
             for key_speed_range in key_speed_ranges:
-                # Check if in range
                 if key_speed_range.is_in_range(speed):
                     key_speed_range.activate()
-                # Out of range so deactivate the key
                 else:
                     key_speed_range.deactivate()
 
@@ -139,7 +197,6 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
         # ensure all keys are deactivated
         for key_speed_range in key_speed_ranges:
             key_speed_range.deactivate()
-
     print("\nYou biked {:.2f} miles".format(distance_traveled))
 
 
