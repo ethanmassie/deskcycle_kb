@@ -59,19 +59,19 @@ class KeySpeedRange:
 
         # set the activate and deactivate functions based on type and set up the default state where necessary
         if self.key_type == KeyType.HOLD_KEY:
-            self.__is_down = False
-            self.activate = self.__hold_key_activate
-            self.deactivate = self.__hold_key_deactivate
+            self._is_down = False
+            self.activate = self._hold_key_activate
+            self.deactivate = self._hold_key_deactivate
         elif self.key_type == KeyType.TOGGLE_KEY:
-            self.__is_toggled = False
-            self.activate = self.__toggle_key_activate
-            self.deactivate = self.__toggle_key_deactivate
+            self._is_toggled = False
+            self.activate = self._toggle_key_activate
+            self.deactivate = self._toggle_key_deactivate
         elif self.key_type == KeyType.TYPEWRITE_KEY:
-            self.activate = self.__typewrite_key_activate
-            self.deactivate = self.__typewrite_key_deactivate
+            self.activate = self._typewrite_key_activate
+            self.deactivate = self._typewrite_key_deactivate
         else:
-            self.activate = self.__default_activate
-            self.deactivate = self.__default_deactivate
+            self.activate = self._default_activate
+            self.deactivate = self._default_deactivate
 
     def is_in_range(self, speed: float) -> bool:
         """
@@ -81,26 +81,26 @@ class KeySpeedRange:
         """
         return self.min_speed <= speed <= self.max_speed
 
-    def __hold_key_activate(self):
+    def _hold_key_activate(self):
         """
         Handle activation for a hold key. Performs a key down on the key if it isn't already down
         :return:
         """
-        if not self.__is_down:
+        if not self._is_down:
             keyDown(self.key_name)
-            self.__is_down = True
+            self._is_down = True
             logging.debug("Holding {}".format(self.key_name))
 
-    def __toggle_key_activate(self):
+    def _toggle_key_activate(self):
         """
         Handle activation for a toggle key. Only presses the key if it isn't already toggled
         """
-        if not self.__is_toggled:
+        if not self._is_toggled:
             press(self.key_name)
-            self.__is_toggled = True
+            self._is_toggled = True
             logging.debug("Pressed {}".format(self.key_name))
 
-    def __typewrite_key_activate(self):
+    def _typewrite_key_activate(self):
         """
         Handle activation for a typewrite key. Simply call typewrite with the key_name
         :return:
@@ -108,37 +108,37 @@ class KeySpeedRange:
         typewrite(self.key_name)
         logging.debug("Wrote {}".format(self.key_name))
 
-    def __default_activate(self):
+    def _default_activate(self):
         """
         perform activation for key based on it's type
         """
         pass
 
-    def __hold_key_deactivate(self):
+    def _hold_key_deactivate(self):
         """
         Handle deactivation for a hold key. Performs a key up if the key is already down.
         """
-        if self.__is_down:
+        if self._is_down:
             keyUp(self.key_name)
-            self.__is_down = False
+            self._is_down = False
             logging.debug("Released {}".format(self.key_name))
 
-    def __toggle_key_deactivate(self):
+    def _toggle_key_deactivate(self):
         """
         Handle deactivation for a toggle key. Only presses the key if it is already toggled effectively un-toggling it.
         """
-        if self.__is_toggled:
+        if self._is_toggled:
             press(self.key_name)
-            self.__is_toggled = False
+            self._is_toggled = False
             logging.debug("Pressed {} Again".format(self.key_name))
 
-    def __typewrite_key_deactivate(self):
+    def _typewrite_key_deactivate(self):
         """
         Handle deactivation for typewrite key. Noop since nothing needs to be deactivated.
         """
         pass
 
-    def __default_deactivate(self):
+    def _default_deactivate(self):
         """
         perform deactivation for key based on it's type
         """
@@ -186,18 +186,15 @@ def main(key_speed_ranges: List[KeySpeedRange], desk_cycle: Serial):
             delta_time, previous_time = calculate_delta_time(previous_time)
             distance_traveled += (speed / SECONDS_IN_HOUR) * delta_time
 
+            print(f'\tCurrent Speed: {speed:.2f} mph \tDistance Traveled: {distance_traveled:.2f} miles', end='\r', flush=True)
             # check for keyboard inputs to perform
             for key_speed_range in key_speed_ranges:
-                if key_speed_range.is_in_range(speed):
-                    key_speed_range.activate()
-                else:
-                    key_speed_range.deactivate()
-
+                key_speed_range.activate() if key_speed_range.is_in_range(speed) else key_speed_range.deactivate()
     except KeyboardInterrupt:
+        print()
         # ensure all keys are deactivated
         for key_speed_range in key_speed_ranges:
             key_speed_range.deactivate()
-    print("\nYou biked {:.2f} miles".format(distance_traveled))
 
 
 def discover_device():
@@ -228,17 +225,12 @@ if __name__ == '__main__':
                         help='set if you want more logging info')
     args = parser.parse_args()
 
-    if args.debug:
-        log_level = logging.DEBUG
-    else:
-        log_level = logging.ERROR
-
-    logging.basicConfig(level=log_level, format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%I:%M:%S')
+    # setup logger
+    log_level = logging.DEBUG if args.debug else logging.ERROR
+    logging.basicConfig(level=log_level, format='\n%(asctime)s [%(levelname)s] %(message)s', datefmt='%I:%M:%S')
 
     # find path to config file
-    file_path = None
     conf_dir_file = '{}/{}'.format(CONF_PATH, args.keyboard_config)
-
     if Path(args.keyboard_config).exists():
         file_path = args.keyboard_config
     elif Path(conf_dir_file).exists():
@@ -256,9 +248,8 @@ if __name__ == '__main__':
             exit(2)
 
     try:
-        desk_cycle_dev = discover_device()
-        main(configured_keys.keys, desk_cycle_dev)
-        desk_cycle_dev.close()
+        with discover_device() as desk_cycle_dev:
+            main(configured_keys.keys, desk_cycle_dev)
     except RuntimeError as e:
         logging.error(e)
         exit(3)
