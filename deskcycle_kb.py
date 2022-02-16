@@ -59,7 +59,7 @@ class KeySpeedRange:
 
         # set the activate and deactivate functions based on type and set up the default state where necessary
         if self.key_type == KeyType.HOLD_KEY:
-            self._is_down = False
+            self._is_pressed = False
             self.activate = self._hold_key_activate
             self.deactivate = self._hold_key_deactivate
         elif self.key_type == KeyType.TOGGLE_KEY:
@@ -86,9 +86,9 @@ class KeySpeedRange:
         Handle activation for a hold key. Performs a key down on the key if it isn't already down
         :return:
         """
-        if not self._is_down:
+        if not self._is_pressed:
             keyDown(self.key_name)
-            self._is_down = True
+            self._is_pressed = True
             logging.debug("Holding {}".format(self.key_name))
 
     def _toggle_key_activate(self):
@@ -118,9 +118,9 @@ class KeySpeedRange:
         """
         Handle deactivation for a hold key. Performs a key up if the key is already down.
         """
-        if self._is_down:
+        if self._is_pressed:
             keyUp(self.key_name)
-            self._is_down = False
+            self._is_pressed = False
             logging.debug("Released {}".format(self.key_name))
 
     def _toggle_key_deactivate(self):
